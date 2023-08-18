@@ -10,7 +10,7 @@ db_pool = pool.SimpleConnectionPool(
     20, # Maximum number of connections
     database='GravityGuy',
     user='postgres',
-    password='monopolino1',
+    password='****',
     host='localhost',
     port='5432'
 )

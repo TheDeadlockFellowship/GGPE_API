@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from psycopg2 import pool, sql
+from psycopg2 import pool
 import psycopg2.extras
 
 app = Flask(__name__)
@@ -85,16 +85,33 @@ def get_server_version():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/delete_run/<string:player_name>/<string:run_start>', methods=['DELETE'])
 def delete_run(player_name, run_start):
     try:
-        delete_query = 'DELETE FROM RUNS WHERE PLAYER_NAME = %s AND RUN_START = %s'
-        rows_affected = execute_query(delete_query, (player_name, run_start))
-        if not rows_affected:
-            return jsonify({'error': 'Run not found'}), 404
-        return jsonify({'message': 'Run has been deleted'}), 200
+        with db_connection.cursor() as cursor:
+            # Delete associated inputs
+            cursor.execute('''
+                DELETE FROM INPUTS
+                WHERE player_name = %s AND run_start = %s
+            ''', (player_name, run_start))
+            db_connection.commit()
+
+            # Delete the run
+            cursor.execute('''
+                DELETE FROM RUNS
+                WHERE PLAYER_NAME = %s AND RUN_START = %s
+            ''', (player_name, run_start))
+            rows_affected = cursor.rowcount
+            db_connection.commit()
+
+            if rows_affected == 0:
+                return jsonify({'error': 'Run not found'}), 404
+
+            return jsonify({'message': 'Run and associated inputs have been deleted'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/get_models/<string:player_name>', methods=['GET'])
 def get_models(player_name):
